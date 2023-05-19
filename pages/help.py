@@ -16,7 +16,8 @@ def app():
 
     # TODO: Quando o artigo for publicado inserir o link para o mesmo.
     st.write("Atualmente, o modelo de machine learning utilizado para a classificação é o _Gradient Boosting_, o mesmo já possui o registro expedido pelo INPI Brasil - Instituto Nacional da Propriedade Industrial, sob o número de procedimento [BR 51 2021 002710-8](http://revistas.inpi.gov.br/pdf/Programa_de_computador2655.pdf).")
-    # Para maiores informações sobre como o modelo foi configurado e avaliado, veja o artigo publicado [aqui](https://doi.org/10.5753/webmedia_estendido.2021.17623).
+    
+    st.write("Para maiores informações sobre como o modelo foi configurado e avaliado, veja o artigo publicado [aqui](https://www.frontiersin.org/articles/10.3389/fitd.2021.769968/full).")
 
     st.write("### O que são os valores de porcentagem do resultado detalhado?")
 
@@ -30,16 +31,15 @@ def app():
 
     st.write("Para auxiliar os profissionais de saúde com mais informações, nós também resolvemos inserir esse resultado mais detalhado. Então, o profissional de saúde pode utilizar essas informações para entender o quadro geral do paciente e observar o nível de confiança que o modelo possui em relação ao resultado informado.")
 
-    st.write("### Alguma informação do paciente fica salva?.")
+    st.write("### Alguma informação do paciente fica salva?")
 
     st.write("Não. Atualmente a VALERIA não armazena nenhuma informação acerca do paciente. Todos os dados são apagados no momento em que o modelo apresenta o resultado.")
 
     st.write("## Caso possua alguma dúvida a respeito da utilização da plataforma, você pode assistir ao nosso vídeo introdutório:")
 
-    # TODO: Atualizar o vídeo
-    st.video("https://www.youtube.com/watch?v=3ipbYO4zJHo")
+    st.video("https://www.youtube.com/watch?v=-egcW70C7EY")
 
-    with st.form("contact_form"):
+    with st.form("contact_form", clear_on_submit=True):
 
         st.write("## Caso ainda possua alguma outra dúvida, entre em contato conosco para que possamos lhe ajudar:")
 

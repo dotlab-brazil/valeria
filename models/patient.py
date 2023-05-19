@@ -1,8 +1,13 @@
+# from flask_sqlalchemy import SQLAlchemy
+from email import message
+from sqlalchemy import create_engine
+from datetime import datetime
 import pickle
 import pandas as pd
 import numpy as np
 import lime.lime_tabular
 import streamlit as st
+import requests
 
 class Patient:
     """Classe de Paciente, responsável por armazenar os dados do paciente e realizar o dianóstico do mesmo, com a utilização de um model de ML.
@@ -11,6 +16,12 @@ class Patient:
     def __init__(self):
         """Construtor da classe, inicialização das labels e definição do caminho para o modelo de ML.
         """
+        
+        # self.engine = create_engine('mysql://upecaruaru01:l3g3nd4ry@mysql.upecaruaru.com.br:3306/upecaruaru01') # connect to server
+        password = st.secrets["password"]
+        link = st.secrets["link"]
+        username = st.secrets["username"]
+        self.engine = create_engine(f'mysql://{username}:{password}@{link}:3306/{username}') # connect to server
 
         #Saídas formatadas do modelo para visualização no front.
         self.outputs = {
@@ -28,17 +39,16 @@ class Patient:
 
         # Inputs numéricos do modelo
         self.numerical_labels = {
-            "DIAS": "Dias"
+            "DIAS": "Período dos sintomas"
         }
 
         self.labels = dict(self.categorical_labels, **self.numerical_labels)
 
         # caminho onde está localizado o modelo de ML.
-        self.path_model_ml = "ml\\gradient_model.pkl"
+        self.path_model_ml = "ml/gradient_model.pkl"
 
     def diagnosis (self):
         """Realiza o dianóstico do paciente, utilizando os dados dos atributos para realizar a classificação pelo modelo de ML. Basicamente, a função carrega o modelo e faz o model.predict() com os dados do paciente. Também é executado o model.predict_proba() para obter as probabilidades de cada saída do modelo.
-
         Returns:
             *string: o resultado da classificação do modelo formatado para visualização;
             *pandas.Dataframe object: dataframe contendo as probablidades de cada saída do modelo com o padrão [doença | probabilidade];
@@ -49,6 +59,25 @@ class Patient:
             data = self.getRecord()
             self.classification = self.model.predict(data)[0]
             prob = self.model.predict_proba(data)
+            
+            message = "📋 Mais um diagnóstico realizado com sucesso! ✅"
+            bot_token = st.secrets["telegram_token"]
+            bot_chatID = st.secrets["chat_id"]
+            send_text = f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={bot_chatID}&text={message}"
+            requests.get(send_text)
+            
+            try:
+                self.saveData()
+                
+            except Exception as error:
+                message = "💀 Ocorreu um erro ao enviar a mensagem para o servidor! 💥"
+                bot_token = st.secrets["telegram_token"]
+                bot_chatID = st.secrets["chat_id"]
+                send_text = f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={bot_chatID}&text={message}"
+                requests.get(send_text)
+                
+                send_text = f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={bot_chatID}&text={error}"
+                requests.get(send_text)
 
             prob_df = pd.DataFrame(
                 ['{:.2%}'.format(i) for i in prob[0]],
@@ -59,7 +88,6 @@ class Patient:
 
     def explainer(self):
         """Utiliza o LIME para explicação do predição do dianóstico. A base de dados de treinamento é usado para preparar o LIME, então os dados do paciente são inseridos para obtenção dos pesos para cada atributo. Por fim, os dados são anexados em um dataframe contendo o resutlado do paciente para cada atributo e o seu respectivo peso.
-
         Returns:
             * pandas.Dataframe object: Dataframe contendo o valor do peso de cada atributo positivo, index=Atributo header = [Resultado, Valor].
             * pandas.Dataframe object: Dataframe contendo o valor do peso de cada atributo negativo, index=Atributo header = [Resultado, Valor].
@@ -102,13 +130,13 @@ class Patient:
         )
 
         # A coluna de resultado contém as informações do paciente, a saída do as_map() do explainer está na mesma ordem da entrada dos atributos, e consequentemente o método getRecord() da classe também esta na mesma ordem, não sendo necessário ordenar antes de unificar.
-        exp_df["Resultado"] = np.array(self.getRecord()[0])
+        exp_df["Resposta do Paciente"] = np.array(self.getRecord()[0])
 
         # Necessário converter o tipo da coluna para poder modificar o valor livremente. Para uma melhor visualização, as colunas boolenasa foram convertidas para um resultado de "Sim" ou "Não".
-        exp_df["Resultado"] = exp_df["Resultado"].astype(str)
+        exp_df["Resposta do Paciente"] = exp_df["Resposta do Paciente"].astype(str)
         for attribute in self.categorical_labels.values():
-            exp_df.loc[(exp_df.index == attribute) & (exp_df["Resultado"] == "0"), "Resultado"] = "Não"
-            exp_df.loc[(exp_df.index == attribute) & (exp_df["Resultado"] == "1"), "Resultado"] = "Sim"
+            exp_df.loc[(exp_df.index == attribute) & (exp_df["Resposta do Paciente"] == "0"), "Resposta do Paciente"] = "Não"
+            exp_df.loc[(exp_df.index == attribute) & (exp_df["Resposta do Paciente"] == "1"), "Resposta do Paciente"] = "Sim"
 
         # Para uma melhor visualização, o valor do peso foi multiplicado por 100.
         exp_df["Valor"] = exp_df["Valor"].apply(lambda x: x * 100)
@@ -117,30 +145,32 @@ class Patient:
         exp_neg = exp_df[exp_df["Valor"] < 0].sort_values(by=["Valor"], ascending=True)
 
         # Pegar apenas o resutlado do paciente
-        exp_pos = exp_pos[["Resultado"]]
-        exp_neg = exp_neg[["Resultado"]]
+        exp_pos = exp_pos[["Resposta do Paciente"]]
+        exp_neg = exp_neg[["Resposta do Paciente"]]
 
         return exp_pos, exp_neg
 
-    # TODO: Ver com o pessoal se isso aqui é realmente necessário.
-    def eraseData(self):
-        """Método para limpeza dos dados do paciente, com isso todas as informações da ficha clínica do paciente são apagadas do sistema
+    def saveData(self):
         """
+        > It takes the data from the form, adds the classification and timestamp, and saves it to the
+        database
+        TODO: ERROR WITH DB, SO JUST RETURN
+        """
+        
+        return 0
+        
+        data = self.getRecord()
+        
+        # Getting the current date and time
+        dt = datetime.now()
 
-        self.fever = None
-        self.myalgia = None
-        self.headache = None
-        self.rash = None
-        self.nausea = None
-        self.backPain = None
-        self.conjunctivitis = None
-        self.arthritis = None
-        self.arthralgia = None
-        self.petechia = None
-        self.eyaPain = None
-        self.diabetes = None
-        self.hypertension = None
-        self.days = None
+        # getting the timestamp
+        ts = datetime.timestamp(dt)
+        
+        data_df = pd.DataFrame(data=data, columns=self.labels)
+        data_df["CLASSI_FIN"] = self.classification
+        data_df["timestamp"] = pd.to_datetime(ts, unit='s')
+        data_df.to_sql("consultas", self.engine, index=False, if_exists="append")
 
 
     # Setters.
@@ -207,7 +237,6 @@ class Patient:
     
     def getLabels(self):
         """Método get para obter todas as labels utlizada no modelo de ML.
-
         Returns:
             list: array com todas as labels do modelo de ML.
         """
@@ -215,7 +244,6 @@ class Patient:
 
     def getRecord(self):
         """Get para retornar a ficha médica do paciente, com todas as informações dos atributos. IMPORTANTE: É NECESSÁRIO ESTAR NA MESMA ORDEM EM QUE O MODELO DE ML FOI TREINADO.
-
         Returns:
             list: array dos os valores dos atributos do paciente.
         """

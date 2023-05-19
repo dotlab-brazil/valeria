@@ -5,7 +5,7 @@ def app():
 
     st.write("## Preencha os campos com as informações do paciente para obter o resultado:")
 
-    with st.form("diagnostico_form"):
+    with st.form("diagnostico_form", clear_on_submit=True):
 
         patient = Patient()
 
@@ -50,7 +50,6 @@ def app():
             with st.spinner("Processando..."):
                 result, probability_df = patient.diagnosis()
                 exp_pos, exp_neg = patient.explainer()
-                patient.eraseData()
 
             st.write(f"## O resultado mais provável é **{result}**")
 
@@ -61,15 +60,8 @@ def app():
             st.write("#### Probabilidade de cada doença")
             st.dataframe(probability_df.sort_values(by=["Porcentagem"], ascending=False))
 
-            st.write("#### Peso de cada atributo para este resultado")
-
-            col_pos, col_neg = st.columns(2)
-
-            col_pos.write(f"Atributos que contribuíram para o resultado {result}")
-            col_pos.dataframe(exp_pos)
-
-            col_neg.write(f"Atributos que não contribuíram para o resultado {result}")
-            col_neg.dataframe(exp_neg)
+            st.write(f"Atributos que contribuíram para o resultado {result}")
+            st.dataframe(exp_pos)
 
             st.write("---")
             st.warning("**AVISO IMPORTANTE: este resultado é proveniente de um modelo de _machine learning_, não é definitivo. Analise também a situação epidemiológica da sua região.**")
